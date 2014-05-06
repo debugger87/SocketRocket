@@ -702,6 +702,7 @@ static __strong NSData *CRLFCRLF;
     [_outputBuffer appendData:data];
     [self _pumpWriting];
 }
+
 - (void)send:(id)data;
 {
     NSAssert(self.readyState != SR_CONNECTING, @"Invalid State: Cannot call send: until connection is open");
@@ -720,6 +721,13 @@ static __strong NSData *CRLFCRLF;
     });
 }
 
+- (void)sendPing {
+    NSAssert(self.readyState != SR_CONNECTING, @"Invalid State: Cannot call send: until connection is open");
+    dispatch_async(_workQueue, ^{
+        [self _sendFrameWithOpcode:SROpCodePing data:nil];
+    });
+}
+
 - (void)handlePing:(NSData *)pingData;
 {
     // Need to pingpong this off _callbackQueue first to make sure messages happen in order
@@ -730,9 +738,11 @@ static __strong NSData *CRLFCRLF;
     }];
 }
 
-- (void)handlePong;
+- (void)handlePong:(NSData *)pongData;
 {
-    // NOOP
+    if ([self.delegate respondsToSelector:@selector(webSocket:didReceivePongFrame:)]) {
+        [self.delegate webSocket:self didReceivePongFrame:pongData];
+    }
 }
 
 - (void)_handleMessage:(id)message
@@ -862,7 +872,7 @@ static inline BOOL closeCodeIsValid(int closeCode) {
             [self handlePing:frameData];
             break;
         case SROpCodePong:
-            [self handlePong];
+            [self handlePong:frameData];
             break;
         default:
             [self _closeWithProtocolError:[NSString stringWithFormat:@"Unknown opcode %ld", (long)opcode]];
