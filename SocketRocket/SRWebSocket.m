@@ -724,7 +724,7 @@ static __strong NSData *CRLFCRLF;
 - (void)sendPing {
     NSAssert(self.readyState != SR_CONNECTING, @"Invalid State: Cannot call send: until connection is open");
     dispatch_async(_workQueue, ^{
-        [self _sendFrameWithOpcode:SROpCodePing data:nil];
+        [self _sendFrameWithOpcode:SROpCodePing data:@""];
     });
 }
 
